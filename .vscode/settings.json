@@ -1,9 +1,14 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
   "idf.flashType": "UART",
-  "idf.port": "/dev/ttyACM1",
+  "idf.port": "/dev/ttyACM0",
   "files.associations": {
-    "uart.h": "c"
+    "uart.h": "c",
+    "random": "c",
+    "*.tcc": "c",
+    "format": "c",
+    "freertos.h": "c",
+    "queue.h": "c"
   },
   "idf.adapterTargetName": "esp32"
 }

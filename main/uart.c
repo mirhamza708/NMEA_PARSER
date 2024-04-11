@@ -1,5 +1,5 @@
 #include "uart.h"
-
+#include "parser.h"
 
 static const char *TAG = "uart_events";
 
@@ -17,32 +17,31 @@ static const char *TAG = "uart_events";
  */
 
 #define EX_UART_NUM UART_NUM_2
+#define UART_TX_PIN 17
+#define UART_RX_PIN 16
 #define PATTERN_CHR_NUM    (1)         /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
-
 #define BUF_SIZE (1024)
 #define RD_BUF_SIZE (BUF_SIZE)
+
 static QueueHandle_t uart0_queue;
 
 static void uart_event_task(void *pvParameters)
 {
     uart_event_t event;
     size_t buffered_size;
-    uint8_t* dtmp = (uint8_t*) malloc(RD_BUF_SIZE);
+    char* dtmp = (char*) malloc(RD_BUF_SIZE);
+
     for (;;) {
         //Waiting for UART event.
         if (xQueueReceive(uart0_queue, (void *)&event, (TickType_t)portMAX_DELAY)) {
             bzero(dtmp, RD_BUF_SIZE);
-            ESP_LOGI(TAG, "uart[%d] event:", EX_UART_NUM);
+            // ESP_LOGI(TAG, "uart[%d] event:", EX_UART_NUM);
             switch (event.type) {
             //Event of UART receving data
             /*We'd better handler data event fast, there would be much more data events than
             other types of events. If we take too much time on data event, the queue might
             be full.*/
             case UART_DATA:
-                ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
-                uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);
-                ESP_LOGI(TAG, "[DATA EVT]:");
-                uart_write_bytes(EX_UART_NUM, (const char*) dtmp, event.size);
                 break;
             //Event of HW FIFO overflow detected
             case UART_FIFO_OVF:
@@ -77,19 +76,17 @@ static void uart_event_task(void *pvParameters)
             case UART_PATTERN_DET:
                 uart_get_buffered_data_len(EX_UART_NUM, &buffered_size);
                 int pos = uart_pattern_pop_pos(EX_UART_NUM);
-                ESP_LOGI(TAG, "[UART PATTERN DETECTED] pos: %d, buffered size: %d", pos, buffered_size);
+                // ESP_LOGI(TAG, "[UART PATTERN DETECTED] pos: %d, buffered size: %d", pos, buffered_size);
                 if (pos == -1) {
                     // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
                     // record the position. We should set a larger queue size.
                     // As an example, we directly flush the rx buffer here.
                     uart_flush_input(EX_UART_NUM);
                 } else {
-                    uart_read_bytes(EX_UART_NUM, dtmp, pos, 100 / portTICK_PERIOD_MS);
-                    uint8_t pat[PATTERN_CHR_NUM + 1];
-                    memset(pat, 0, sizeof(pat));
-                    uart_read_bytes(EX_UART_NUM, pat, PATTERN_CHR_NUM, 100 / portTICK_PERIOD_MS);
-                    ESP_LOGI(TAG, "read data: %s", dtmp);
-                    ESP_LOGI(TAG, "read pat : %s", pat);
+                    int read_length = uart_read_bytes(EX_UART_NUM, dtmp, pos + 1, 100 / portTICK_PERIOD_MS);
+                    dtmp[read_length] = '\0';
+
+                    gps_parse(dtmp, read_length+1);
                 }
                 break;
             //Others
@@ -125,7 +122,7 @@ esp_err_t uart_init()
     //Set UART log level
     esp_log_level_set(TAG, ESP_LOG_INFO);
     //Set UART pins (using UART0 default pins ie no changes.)
-    uart_set_pin(EX_UART_NUM, 17, 16, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_set_pin(EX_UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     //Set uart pattern detect function.
     uart_enable_pattern_det_baud_intr(EX_UART_NUM, '\n', PATTERN_CHR_NUM, 9, 0, 0);
@@ -133,6 +130,6 @@ esp_err_t uart_init()
     uart_pattern_queue_reset(EX_UART_NUM, 20);
 
     //Create a task to handler UART event from ISR
-    xTaskCreate(uart_event_task, "uart_event_task", 2048, NULL, 12, NULL);
+    xTaskCreate(uart_event_task, "uart_event_task", 3072, NULL, 12, NULL);
     return ESP_OK;
 }

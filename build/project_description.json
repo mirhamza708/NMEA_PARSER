@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "NMEA_PARSER",
-    "project_version":    "1",
+    "project_version":    "d142209-dirty",
     "project_path":       "/home/hamza/ESP32_projects/NMEA_PARSER",
     "idf_path":           "/home/hamza/esp/v5.2.1/esp-idf",
     "build_dir":          "/home/hamza/ESP32_projects/NMEA_PARSER/build",
@@ -805,7 +805,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "/home/hamza/ESP32_projects/NMEA_PARSER/build/esp-idf/main/libmain.a",
-            "sources": [ "/home/hamza/ESP32_projects/NMEA_PARSER/main/main.c", "/home/hamza/ESP32_projects/NMEA_PARSER/main/uart.c" ],
+            "sources": [ "/home/hamza/ESP32_projects/NMEA_PARSER/main/main.c", "/home/hamza/ESP32_projects/NMEA_PARSER/main/uart.c", "/home/hamza/ESP32_projects/NMEA_PARSER/main/parser.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
