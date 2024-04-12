@@ -66,3 +66,31 @@ This case is executed in the uart_event_task when a line feed character is recei
 ## Sentence Parsing
 In the case UART_PATTERN_DET a single NMEA sentence is read. And this sentence is passed into our gps_parse() function to extract the relevent information from it. And this data is stored in the structure type gps_t.
 
+## How parsing works
+gps_parse function is called inside the uart_event_task. This function first checks that a valid GPS sentence is received (starts with '$' and have length greater than 3), return if sentence invalid. Secondly the CRC is calculated and compared with the one provided in the sentence if it does not match, the function returns and no calculation is done. After both of the checks passes then the sentence is parsed upto the first comma and based on the sentence type the required function is called. for example if the sentence is GPGGA then parse_gga is called and so on for the rest of the sentences.
+
+In the function parse_gga a while loop is executed untill the end of the sentence. When a comma is detected a temporary sub string is made and the contents between commas are copied into it. item_idx counts the position of the sub string and a switch case statement is called based on the this item_idx. for example if the item_idx is 7 and the sentence type is GPRMC then the case 7 is executed inside the function parse_rmc. In this case 7 the speed data is parsed and stored in the global struct gps. All the parsed data is stored in the gps struct.
+
+There are seperate functions for latitude and longitude parsing, checksum calculation, parsing time and date. The parse_time function is defined as static inline because I wanted the scope of this function to be in the same file and the function is small so made inline to avoid function call overhead.
+
+## Debugging
+The parsed data can be printed to the serial port by uncommenting these lines in the parser.h file
+```C
+ #define DEBUG_GGA 1
+ #define DEBUG_GSA 1
+ #define DEBUG_RMC 1
+ #define DEBUG_VTG 1
+```
+This is an example of the output on the serial port:
+```
+I (135690) Parser: $GPGGA,080512.00,3414.86611,N,07155.58886,E,1,05,1.36,353.9,M,-40.6,M,,*77
+
+I (135690) Parser: Time:13:5:12.000000
+I (135700) Parser: latitude: 34.247768
+I (135700) Parser: longitude: 9.593148
+I (135700) Parser: fix: 1
+I (135710) Parser: Sats: 5
+I (135710) Parser: HDOP 1.360000
+I (135720) Parser: altitude: 313.299988
+```
+
