@@ -13,7 +13,7 @@ static const char *TAG = "uart_events";
  * - Transmit (Tx) buffer: off
  * - Flow control: off
  * - Event queue: on
- * - Pin assignment: TxD (default), RxD (default)
+ * - Pin assignment: TxD 17, RxD 16
  */
 
 #define EX_UART_NUM UART_NUM_2
@@ -29,12 +29,8 @@ static void uart_event_task(void *pvParameters)
 {
     uart_event_t event;
     size_t buffered_size;
-    UBaseType_t stack_size_used;
-    stack_size_used = uxTaskGetStackHighWaterMark(NULL);
-    printf("%u\r\n", stack_size_used);
     char* dtmp = (char*) pvPortMalloc(RD_BUF_SIZE);
-    stack_size_used = uxTaskGetStackHighWaterMark(NULL);
-    printf("%u\r\n", stack_size_used);
+
     for (;;) {
         //Waiting for UART event.
         if (xQueueReceive(uart0_queue, (void *)&event, (TickType_t)portMAX_DELAY)) {
@@ -86,7 +82,7 @@ static void uart_event_task(void *pvParameters)
                     // As an example, we directly flush the rx buffer here.
                     uart_flush_input(EX_UART_NUM);
                 } else {
-                    int read_length = uart_read_bytes(EX_UART_NUM, dtmp, pos + 1, 100 / portTICK_PERIOD_MS);
+                    uart_read_bytes(EX_UART_NUM, dtmp, pos + 1, 100 / portTICK_PERIOD_MS);
                     gps_t myGPSData = gps_parse(dtmp);//returns GPS_OKAY to status member if all goes well.
                     ESP_LOGI(TAG, "Status: %d",myGPSData.status);
                     ESP_LOGI(TAG, "Time: %d:%d:%f", myGPSData.tim.hour, myGPSData.tim.minute, myGPSData.tim.second);
@@ -98,8 +94,6 @@ static void uart_event_task(void *pvParameters)
                 break;
             }
         }
-        stack_size_used = uxTaskGetStackHighWaterMark(NULL);
-        printf("%u\r\n", stack_size_used);
     }
     vPortFree(dtmp);
     dtmp = NULL;
