@@ -29,13 +29,16 @@ static void uart_event_task(void *pvParameters)
 {
     uart_event_t event;
     size_t buffered_size;
-    char* dtmp = (char*) malloc(RD_BUF_SIZE);
-
+    UBaseType_t stack_size_used;
+    stack_size_used = uxTaskGetStackHighWaterMark(NULL);
+    printf("%u\r\n", stack_size_used);
+    char* dtmp = (char*) pvPortMalloc(RD_BUF_SIZE);
+    stack_size_used = uxTaskGetStackHighWaterMark(NULL);
+    printf("%u\r\n", stack_size_used);
     for (;;) {
         //Waiting for UART event.
         if (xQueueReceive(uart0_queue, (void *)&event, (TickType_t)portMAX_DELAY)) {
             bzero(dtmp, RD_BUF_SIZE);
-            // ESP_LOGI(TAG, "uart[%d] event:", EX_UART_NUM);
             switch (event.type) {
             //Event of UART receving data
             /*We'd better handler data event fast, there would be much more data events than
@@ -84,9 +87,9 @@ static void uart_event_task(void *pvParameters)
                     uart_flush_input(EX_UART_NUM);
                 } else {
                     int read_length = uart_read_bytes(EX_UART_NUM, dtmp, pos + 1, 100 / portTICK_PERIOD_MS);
-                    dtmp[read_length] = '\0';
-
-                    gps_parse(dtmp, read_length+1);
+                    gps_t myGPSData = gps_parse(dtmp);//returns GPS_OKAY to status member if all goes well.
+                    ESP_LOGI(TAG, "Status: %d",myGPSData.status);
+                    ESP_LOGI(TAG, "Time: %d:%d:%f", myGPSData.tim.hour, myGPSData.tim.minute, myGPSData.tim.second);
                 }
                 break;
             //Others
@@ -95,8 +98,10 @@ static void uart_event_task(void *pvParameters)
                 break;
             }
         }
+        stack_size_used = uxTaskGetStackHighWaterMark(NULL);
+        printf("%u\r\n", stack_size_used);
     }
-    free(dtmp);
+    vPortFree(dtmp);
     dtmp = NULL;
     vTaskDelete(NULL);
 }

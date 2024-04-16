@@ -8,9 +8,10 @@
 #include "esp_log.h"
 #include "uart.h"
 
-#define GMT5 5
+#define GMT 5
 #define GPS_MAX_SATELLITES_IN_USE (12)
 #define GPS_MAX_SATELLITES_IN_VIEW (16)
+#define MAX_SENTENCE_LENGTH 82
 
 #define DEBUG_GGA 1
 #define DEBUG_GSA 1
@@ -49,6 +50,15 @@ typedef struct {
     uint16_t year; /*!< Year (start from 2000) */
 } gps_date_t;
 
+typedef enum {
+    GPS_OKAY,
+    GPS_PTR_TO_NULL,
+    GPS_INV_SENTENCE,
+    GPS_SENTENCE_MISMATCH,
+    GPS_CRC_ERROR,
+    GPS_MEM_LOW,
+} gps_status_t;
+
 typedef struct {
     char current_sentence_type[6];
     float latitude;                                                /*!< Latitude (degrees) */
@@ -71,6 +81,7 @@ typedef struct {
     float speedkmh;                                                /*!< Ground speed, unit: km/h */
     float cog;                                                     /*!< Course over ground */
     float variation;                                               /*!< Magnetic variation */
+    gps_status_t status;                                           /*!< gps status */
 } gps_t;
 
-void gps_parse(const char *sentence, size_t len);
+gps_t gps_parse(const char *sentence);
