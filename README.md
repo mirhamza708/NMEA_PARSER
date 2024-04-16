@@ -74,13 +74,12 @@ In the function parse_gga a while loop is executed untill the end of the sentenc
 There are seperate functions for latitude and longitude parsing, checksum calculation, parsing time and date. The parse_time function is defined as static inline because I wanted the scope of this function to be in the same file and the function is small so made inline to avoid function call overhead.
 
 ## Debugging
-The parsed data can be printed to the serial port by uncommenting these lines in the parser.h file
+The parsed data can be printed to the serial port by uncommenting one of these lines in the parser.c file
 ```C
- #define DEBUG_GGA 1
- #define DEBUG_GSA 1
- #define DEBUG_RMC 1
- #define DEBUG_VTG 1
+// #define LOG_LOCAL_LEVEL ESP_LOG_ERROR 
+// #define LOG_LOCAL_LEVEL ESP_LOG_INFO
 ```
+If none of these lines are uncommented then the log level will be by default set to ESP_LOG_INFO. Currently only two log levels are implemented in the parser.c file
 This is an example of the output on the serial port:
 ```
 I (135690) Parser: $GPGGA,080512.00,3414.86611,N,07155.58886,E,1,05,1.36,353.9,M,-40.6,M,,*77
