@@ -1,14 +1,10 @@
-#include "uart.h"
-#include "parser.h"
+#include "gps_uart.h"
+#include "gps_parser.h"
 
 static const char *TAG = "uart_events";
 
 /**
- * This example shows how to use the UART driver to handle special UART events.
- *
- * It also reads data from UART0 directly, and echoes it to console.
- *
- * - Port: UART0
+ * - Port: UART2
  * - Receive (Rx) buffer: on
  * - Transmit (Tx) buffer: off
  * - Flow control: off
@@ -120,7 +116,7 @@ esp_err_t uart_init()
 
     //Set UART log level
     esp_log_level_set(TAG, ESP_LOG_INFO);
-    //Set UART pins (using UART0 default pins ie no changes.)
+    //Set UART pins (using UART2 default pins ie no changes.)
     uart_set_pin(EX_UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     //Set uart pattern detect function.

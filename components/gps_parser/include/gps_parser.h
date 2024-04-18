@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "esp_log.h"
-#include "uart.h"
+
 
 #define GMT 5
 #define GPS_MAX_SATELLITES_IN_USE (12)

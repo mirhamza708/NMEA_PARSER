@@ -1,6 +1,6 @@
 // #define LOG_LOCAL_LEVEL ESP_LOG_ERROR //as per ESP32 logging guidelines LOG_LOCAL_LEVEL is defined before including esp_log.h
 #define LOG_LOCAL_LEVEL ESP_LOG_INFO
-#include "parser.h"
+#include "gps_parser.h"
 static const char *TAG = "Parser";
 
 static int calculate_checksum(const char *sentence) {
