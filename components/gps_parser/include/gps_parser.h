@@ -64,6 +64,7 @@ typedef struct {
     float latitude;                                                /*!< Latitude (degrees) */
     float longitude;                                               /*!< Longitude (degrees) */
     float altitude;                                                /*!< Altitude (meters) */
+    float geoid_height;                                            /*!< Height above or below the WGS84 ellipsoid (meters) */
     gps_fix_t fix;                                                 /*!< Fix status */
     uint8_t sats_in_use;                                           /*!< Number of satellites in use */
     gps_time_t tim;                                                /*!< time in UTC */

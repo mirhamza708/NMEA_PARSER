@@ -3,9 +3,9 @@
 #include "gps_parser.h"
 static const char *TAG = "Parser";
 
-static int calculate_checksum(const char *sentence) {
-    int checksum = 0;
-    for (int i = 1; sentence[i] != '*'; i++) {
+static uint8_t calculate_checksum(const char *sentence) {
+    uint8_t checksum = 0;
+    for (uint8_t i = 1; sentence[i] != '*'; i++) {
         checksum ^= sentence[i];
     }
     return checksum;
@@ -57,24 +57,26 @@ static inline void parse_date(char *date_string, uint8_t *day, uint8_t *month, u
 }
 
 // Function to parse latitude or longitude from the NMEA sentence
-static float parse_coordinate(const char *coord) {
-    char *tmp_coord_str = strndup(coord, 2);
-    float degrees = atoi(tmp_coord_str);
-    float minutes = atof(coord + 2); //coord is already null terminated in the function parse_gga
-    
-    free(tmp_coord_str);
+static float parse_coordinate(const char *coord, uint8_t *item_length) {
 
+    if (*item_length < 9) {
+        ESP_LOGE(TAG,"Coord string invalid.");
+        return 0;
+    }
+    float tmp_value = strtof(coord,NULL);
+    int degrees = ((int)tmp_value) / 100;
+    float minutes = tmp_value - (degrees * 100);
+    // Calculate the coordinate value
     return degrees + minutes / 60.0;
 }
 
 static void parse_gga(const char *sentence, uint16_t len, gps_t *data_struct) {
     float tmp_latitude = 0.0;
     float tmp_longitude = 0.0;
-    float tmp_altitude = 0.0;
 
-    int i = 0; int item_idx = 0;
+    uint8_t i = 0, item_idx = 0;
     char current_idx[20] = "";
-    int item_length = 0;
+    uint8_t item_length = 0;
 
     // Iterate through the sentence character by character upto null character
     while(sentence[i] != '\0') {
@@ -90,7 +92,7 @@ static void parse_gga(const char *sentence, uint16_t len, gps_t *data_struct) {
                     break;
                 case 2: // Latitude
                     if (item_length > 0) {
-                        tmp_latitude = parse_coordinate(current_idx);
+                        tmp_latitude = parse_coordinate(current_idx, &item_length);
                     }
                     break;
                 case 3: // Latitude direction (N/S)
@@ -105,7 +107,7 @@ static void parse_gga(const char *sentence, uint16_t len, gps_t *data_struct) {
                     break;
                 case 4: // Longitude
                     if (item_length > 0) {
-                        tmp_longitude = parse_coordinate(current_idx);
+                        tmp_longitude = parse_coordinate(current_idx, &item_length);
                     }
                     break;
                 case 5: // Longitude direction (E/W)
@@ -138,12 +140,12 @@ static void parse_gga(const char *sentence, uint16_t len, gps_t *data_struct) {
                     break;
                 case 9: // Altitude
                     if (item_length > 0) {
-                        tmp_altitude = atof(current_idx);
+                        data_struct->altitude = atof(current_idx);
                     }
                     break;
-                case 11: // Altitude above ellipsoid
+                case 11: // Geoid height above WGS84 ellipsoid
                     if (item_length > 0) {
-                        data_struct->altitude = tmp_altitude + atof(current_idx);
+                        data_struct->geoid_height = atof(current_idx);
                         ESP_LOGI(TAG, "altitude: %f",data_struct->altitude);                        
                     }
                     // ESP_LOGI(TAG,"altitude above ellipsoid: %f\r\n", gps.altitude);
@@ -173,10 +175,10 @@ static void parse_gga(const char *sentence, uint16_t len, gps_t *data_struct) {
 
 // Function to parse the GSA sentence
 static void parse_gsa(const char *sentence, uint16_t length, gps_t *data_struct) {
-    int i = 0, item_idx = 0;
+    uint8_t i = 0, item_idx = 0;
     bool empty_field = false; // Flag to track if the current field is empty
     char current_idx[20] = ""; // Buffer to store the current field
-    int item_length = 0; // Length of the current field
+    uint8_t item_length = 0; // Length of the current field
 
     while (sentence[i] != '\0') {
         if (sentence[i] == ',' || sentence[i] == '*') {
@@ -248,10 +250,10 @@ static void parse_gsa(const char *sentence, uint16_t length, gps_t *data_struct)
 }
 
 static void parse_rmc(const char *sentence, uint16_t len, gps_t *data_struct) {
-    int i = 0, item_idx = 0;
+    uint8_t i = 0, item_idx = 0;
     bool empty_field = false; // Flag to track if the current field is empty
     char current_idx[20] = ""; // Buffer to store the current field
-    int item_length = 0; // Length of the current field
+    uint8_t item_length = 0; // Length of the current field
 
     // Temporary variables to store latitude and longitude
     float tmp_latitude = 0.0;
@@ -283,7 +285,7 @@ static void parse_rmc(const char *sentence, uint16_t len, gps_t *data_struct) {
                         break;
                     case 3: // Latitude
                         if (item_length > 0) {
-                            tmp_latitude = parse_coordinate(current_idx);
+                            tmp_latitude = parse_coordinate(current_idx, &item_length);
                         }
                         break;
                     case 4: // Latitude direction (N/S)
@@ -298,7 +300,7 @@ static void parse_rmc(const char *sentence, uint16_t len, gps_t *data_struct) {
                         break;
                     case 5: // Longitude
                         if (item_length > 0) {
-                            tmp_longitude = parse_coordinate(current_idx);
+                            tmp_longitude = parse_coordinate(current_idx, &item_length);
                         }
                         break;
                     case 6: // Longitude direction (E/W)
@@ -351,10 +353,10 @@ static void parse_rmc(const char *sentence, uint16_t len, gps_t *data_struct) {
 
 
 static void parse_vtg(const char *sentence, uint16_t len, gps_t *data_struct) {
-    int i = 0, field_index = 0;
+    uint8_t i = 0, item_idx = 0;
     bool empty_field = false; // Flag to track if the current field is empty
     char current_field[20] = ""; // Buffer to store the current field
-    int field_length = 0; // Length of the current field
+    uint8_t item_length = 0; // Length of the current field
 
     // Iterate through the sentence character by character
     while (sentence[i] != '\0') {
@@ -363,18 +365,18 @@ static void parse_vtg(const char *sentence, uint16_t len, gps_t *data_struct) {
             if (empty_field) {
             } else {
                 // Null-terminate the current field buffer
-                current_field[field_length] = '\0';
+                current_field[item_length] = '\0';
                 // Store or process the current field based on its index
-                switch (field_index) {
+                switch (item_idx) {
                     case 5: // Ground speed in knots
-                        if (field_length > 0) {
+                        if (item_length > 0) {
                             // Parse and store the value if it's not empty
                             data_struct->speed = atof(current_field);
                             ESP_LOGI(TAG, "speed: %f", data_struct->speed);
                         }
                         break;
                     case 7: // Ground speed in kilometers per hour
-                        if (field_length > 0) {
+                        if (item_length > 0) {
                             // Parse and store the value if it's not empty
                             // Assuming the conversion factor is 1.852
                             data_struct->speedkmh = atof(current_field) * 1.852;
@@ -386,15 +388,15 @@ static void parse_vtg(const char *sentence, uint16_t len, gps_t *data_struct) {
                 }
                 // Reset the current field buffer and length
                 memset(current_field, 0, sizeof(current_field));
-                field_length = 0;
+                item_length = 0;
                 // Move to the next field index
-                field_index++;
+                item_idx++;
             }
             // Reset the empty field flag
             empty_field = false;
         } else {
             // Append the character to the current field buffer
-            current_field[field_length++] = sentence[i];
+            current_field[item_length++] = sentence[i];
         }
         i++;
     }
@@ -403,7 +405,7 @@ static void parse_vtg(const char *sentence, uint16_t len, gps_t *data_struct) {
 
 gps_t gps_parse(const char *sentence)
 {
-    int i = 1;
+    uint8_t i = 1;
     char type[7]; // size greater by 1 to accommodate null terminator
     static gps_t gps_data;
     static bool gps_struct_initialized = false;
@@ -442,16 +444,16 @@ gps_t gps_parse(const char *sentence)
         return gps_data;
     }
 
-    int d=0;
+    uint8_t d=0;
     //parse upto asterick
     while(sentence_copy[d] != '*' && d < len-2){
         d++;
     }
     char checksum_str[2] = {sentence_copy[d+1],sentence_copy[d+2]};
-    int provided_checksum = strtol(checksum_str, NULL, 16);
+    uint8_t provided_checksum = strtol(checksum_str, NULL, 16);
 
     // Perform checksum calculation
-    int calculated_checksum = calculate_checksum(sentence);
+    uint8_t calculated_checksum = calculate_checksum(sentence);
     if(provided_checksum != calculated_checksum){
         ESP_LOGE(TAG,"CRC error");
         gps_data.status = (gps_status_t)GPS_CRC_ERROR;
